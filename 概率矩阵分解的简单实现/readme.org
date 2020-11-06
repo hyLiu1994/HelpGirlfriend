@@ -1,0 +1,73 @@
+* 概率矩阵分解的简单实现文档
+** dataio.py
+*** 功能
+读取原始数据
+*** prepare_folder
+**** 输入 
+path 路径名, 字符串
+**** 功能
+检查是否存在该路径，没有则新建文件夹
+*** build_new_paths
+**** 输入
+DATA_FOLDER 路径名, 字符串
+DATASET_NAME 数据集名称, 字符串
+**** 功能
+根据 DATA_FOLDER 与 DATASET_NAME 生成原始数据存储位置
+*** SaveDict
+**** 输入
+dictionary 要存储的字典， 字典
+folder 要存储的文件夹, 字符串
+data_name 要存储的文件名, 字符串
+**** 功能
+保存字典到指定位置
+*** LoadDict
+**** 输入
+folder 要读取的文件夹, 字符串
+data_name 要读取的文件名, 字符串
+**** 功能
+读取指定位置的字典
+**** 输出
+读取到的字典
+*** ReverseDict
+**** 输入
+dictionary 要存储的字典， 字典
+**** 功能
+交换字典的 key 与 value
+**** 输出
+返回交换key与value后的字典
+** PMF.py
+*** 功能
+概率矩阵分解模型
+*** __init__
+**** 输入
+userNum, 用户数量
+itemNum, 项目数量
+hNum, 隐状态数量
+**** 功能
+初始化模型参数 U 矩阵与 V 矩阵
+U 矩阵 维度 [userNum, hNum]
+V 矩阵 维度 [hNum, itemNum]
+*** trainStep
+**** 输入
+RMatrix 用户-项目矩阵 [userNum, itemNum]
+IMatrix 标记矩阵 [userNum, itemNum]
+**** 功能
+利用所有数据进行一次训练迭代
+**** 输出
+当前迭代的loss值
+*** fit 
+**** 输入
+RMatrix 用户-项目矩阵 [userNum, itemNum]
+IMatrix 标记矩阵 [userNum, itemNum]
+EpochNum 迭代次数
+**** 功能
+利用所有数据进行一次训练迭代
+*** predict
+**** 输入
+无
+**** 功能
+获取预测的用户项目矩阵
+**** 输出
+预测的用户项目矩阵 hatRMatrix
+hatRMatrix 维度 [userNum, itemNum]
+
