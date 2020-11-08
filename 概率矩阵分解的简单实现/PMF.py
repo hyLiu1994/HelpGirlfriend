@@ -2,17 +2,24 @@ import tensorflow as tf
 import numpy as np
 
 class PMF:
-    def __init__(self, userNum, itemNum, hNum):
+    def __init__(self, userNum, itemNum, hNum, Activation = "sigmoid"):
         self.NormalInitializers = tf.keras.initializers.RandomNormal(mean= 0.0, stddev = 0.05)
         self.regularizersL2 = tf.keras.regularizers.l2(l = 0.01)
         self.optimizer = tf.keras.optimizers.Adam()
+        self.Activation = "sigmoid"
         self.MSE = tf.keras.losses.MeanSquaredError()
         self.U = tf.Variable(self.NormalInitializers(shape=(userNum, hNum)))
         self.V = tf.Variable(self.NormalInitializers(shape=(hNum, itemNum)))
 
+    def predict(self):
+        hatRMatrix = tf.linalg.matmul(self.U, self.V)
+        if (self.Activation == "sigmoid"):
+            hatRMatrix = tf.keras.activations.sigmoid(hatRMatrix)
+        return hatRMatrix
+
     def trainStep(self, RMatrix, IMatrix):
         with tf.GradientTape() as tape:
-            hatRMatrix = tf.linalg.matmul(self.U, self.V)
+            hatRMatrix = self.predict()
             loss = self.MSE(RMatrix*IMatrix, hatRMatrix*IMatrix) + self.regularizersL2(self.U) + self.regularizersL2(self.V)
         trainParameter = [self.U, self.V]
         gradients = tape.gradient(loss, trainParameter)
@@ -26,13 +33,11 @@ class PMF:
             print ("Epoch: " + str(i) + "; loss: " + str(lossValue))
         print ("训练结束!")
 
-    def predict(self):
-        hatRMatrix = tf.linalg.matmul(self.U, self.V)
-        return hatRMatrix
+    
 
 RMatrix =np.load('R_mat_All.npy')
 IMatrix =np.load('I_mat_All.npy')
 userNum, itemNum = len(RMatrix), len(RMatrix[0])
 model = PMF(userNum, itemNum, 30)
-model.fit(RMatrix, IMatrix, 0)
+model.fit(RMatrix, IMatrix, 1)
 print (model.predict())
