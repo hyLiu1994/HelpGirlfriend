@@ -33,11 +33,9 @@ class PMF:
             print ("Epoch: " + str(i) + "; loss: " + str(lossValue))
         print ("训练结束!")
 
-    
-
-RMatrix =np.load('R_mat_All.npy')
-IMatrix =np.load('I_mat_All.npy')
+RMatrix =np.load('R_train.npy')
+IMatrix =np.load('I_train.npy')
 userNum, itemNum = len(RMatrix), len(RMatrix[0])
 model = PMF(userNum, itemNum, 30)
-model.fit(RMatrix, IMatrix, 1)
+model.fit(RMatrix, IMatrix, 30)
 print (model.predict())
