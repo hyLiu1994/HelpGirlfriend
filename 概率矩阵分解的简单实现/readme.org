@@ -1,0 +1,9 @@
+* 概率矩阵分解的简单实现
+讲解详见知乎文章 https://zhuanlan.zhihu.com/p/285944592
+** 文件说明
+"PMF 教程.org" 与知乎分享的内容一致
+"PMF 程序说明文档" 为PMF.py中各个函数的详细说明
+"PMF.py" 为基础概率矩阵分解的简单实现
+"R_train.npy, I_train.npy" 为小数据集
+** 运行说明
+python PMF.py
