@@ -1,0 +1,156 @@
+* HelpGrilFriend系列 --- 概率矩阵分解 (Probabilistic Matrix Factorization)
+GirlFriend 最近想实现概率矩阵分解，不过她不善于听人讲解，于是乎在这里写一篇较为详细且完善的概率矩阵分解的教学文档，方便她之后的学习与回顾。也希望能够帮助其他人的学习 \（￣︶￣）/。
+** 理论部分
+矩阵分解可以表示为以下形式:
+\begin{equation}
+\label{eq:1}
+R = U^T V
+\end{equation}
+在推荐系统中 $U$ 一般为用户特征向量, $V$ 为商品的特征向量。
+*** 基础版的概率矩阵分解
+**** 模型结构
+概率矩阵分解则认为真实情况下矩阵分解的表示形式应该如下:
+\begin{equation}
+\label{eq:2}
+\begin{align*}
+R &= U^T V + \varepsilon\\
+&= \mathcal{N} (R | U^T * V, \sigma^{2})
+\end{align*}
+\end{equation}
+其中 $\varepsilon \sim \mathcal{N}(0, \sigma^{2})$ 为高斯随机噪声, 并且我们假设 $U_{i} \sim \mathcal{N}(0, \sigma_{U} I)$, $V_{j} \sim \mathcal{N} (0, \sigma_V I)$ 。
+
+最终 $R$ 的条件概率如下所示:
+\begin{equation}
+\label{eq:4}
+p (R | U, V, \sigma^2) = \prod\limits_{ i=1 }^ { N }  \prod\limits_{ j = 1 }^ { M } \left[ \mathcal{N} \left( R_{ij}| U_i^T V_j, \sigma^2 \right) \right]^{I_{ij}}
+\end{equation}
+其中 $N$, $M$ 分布表示用户与商品的数量, $I_{ij}$ 为标记矩阵其表示用户 $i$ 是否与商品 $j$ 产生过互动 ($I_{ij} = 1$ 表示用户 $i$ 与 商品 $j$ 产生过互动，反之则没有产生过互动)。
+
+[[./figure/PMF.png]]
+
+**** 参数学习
+在定义好模型结构后我们要思考的问题就是参数求解了。
+
+概率矩阵分解模型可以看做是概率图模型的一种，$U$ 与 $V$ 为模型的隐变量。由于高斯分布较好的特性，$U$ 和 $V$ 不仅仅是隐变量还是观察量 $R$ 所服从分布 $\mathcal{N}(U^T V, \sigma^{2})$ 的参数。
+
+*对于概率图模型的求解实质是求解概率图模型中各个随机变量服从分布的参数。* 不同于其他概率图模型 (如高斯混合模型) 当我们求解得到概率矩阵分解模型的参数时，概率矩阵分解的隐变量也将会确定。换而言之，在概率矩阵分解中隐变量即为参数，参数即为隐变量。
+
+当隐变量为参数的时候, 我们选择最大后验估计的方式来进行参数求解。概率矩阵分解的后验分布推导如下:
+
+\begin{equation}
+\label{eq:5}
+\begin{align*}
+ln p(U, V | R, \sigma^{2}, \sigma_U^2, \sigma_V^2) &= ln \frac{p(U, V, R | \sigma^2, \sigma_U^2, \sigma_V^2)}{p(R|\sigma^2, \sigma_U^2, \sigma_V^2)}\\
+& \propto ln p (U, V, R | \sigma^2, \sigma_U^2, \sigma_V^2)\\
+& = ln p(R | U, V, \sigma^2) p(U | \sigma_U^2) p(V | \sigma_V^2) \\
+& = ln \frac{1}{\sqrt{2 \pi}\sigma} \exp (- \frac{((R - U^T V)\cdot I)^T ((R - U^T V) \cdot I)}{2 \sigma^2})\\
+& + \sum\limits_{i=1}^{N} ln \frac{1}{\sqrt {2 \pi} \sigma_U} \exp (- \frac{U_i^T U_i}{2 \sigma_U^2}) + \sum\limits_{j=1}^{M} ln \frac{1}{\sqrt {2 \pi} \sigma_V} \exp (- \frac{V_j^T V_j}{2 \sigma_V^2}) \\
+& \propto - \frac{1}{2 \sigma^2} ((R - U^T V) \cdot I)^T ((R - U^T V) \cdot I) - \frac{1}{2 \sigma_U^2} \sum\limits_{i=1}^{N} U_i^T U_i - \frac{1}{2 \sigma_V^2} \sum\limits_{j=1}^M V_j^T V_j\\
+& = - \frac{1}{2 \sigma^2} \sum\limits_{i=1}^N \sum\limits_{j=1}^M I_{ij} (R_{ij} - U_i^T V_j)^2 - \frac{1}{2 \sigma_U^2} \sum\limits_{i=1}^{N} U_i^T U_i - \frac{1}{2 \sigma_V^2} \sum\limits_{j=1}^M V_j^T V_j\\
+\end{align*}
+\end{equation}
+
+最终最大后验估计的优化目标如下:
+\begin{equation}
+\label{eq:6}
+\begin{align*}
+\mathcal{L} &=  \frac{1}{2 \sigma^2} \sum\limits_{i=1}^N \sum\limits_{j=1}^M I_{ij} (R_{ij} - U_i^T V_j)^2 + \frac{1}{2 \sigma_U^2} \sum\limits_{i=1}^{N} U_i^T U_i + \frac{1}{2 \sigma_V^2} \sum\limits_{j=1}^M V_j^T V_j\\
+&= \frac{1}{2} \sum\limits_{i=1}^N \sum\limits_{j=1}^M I_{ij} (R_{ij} - U_i^T V_j)^2 + \frac{\lambda_{U}}{2} \sum\limits_{i=1}^{N} ||U_i||_{Fro}^{2} + \frac{\lambda_{V}}{2} \sum\limits_{j=1}^M ||V_j||_{Fro}^{2}\\ 
+\end{align*}
+\end{equation}
+其中 $\lambda_U$ 和 $\lambda_V$ 为用户与商品的超参数。
+
+** 实践部分
+我们利用 tensorflow 库来快速实现基础版的概率矩阵分解, 主要分为以下几个部分：模型初始化、模型预测、模型单次训练与模型训练。 
+*** 模型初始化 (__init__)
+**** 输入
+userNum, 用户数量
+itemNum, 项目数量
+hNum, 隐状态数量
+Activation，激活函数类型, 用于限制R矩阵的取值范围 
+lamdaU, 用户超参数, 默认取值 0.01
+lamdaV, 项目超参数, 默认取值 0.01
+**** 功能
+初始化模型参数 U 矩阵与 V 矩阵
+U 矩阵; 类型tf.float32; 维度 [userNum, hNum] 
+V 矩阵; 类型tf.float32; 维度 [hNum, itemNum]
+**** Code
+#+BEGIN_EXAMPLE
+    def __init__(self, userNum, itemNum, hNum, Activation = "sigmoid"):
+        self.NormalInitializers = tf.keras.initializers.RandomNormal(mean= 0.0, stddev = 0.05)
+        self.regularizersL2 = tf.keras.regularizers.l2(l = 0.01)
+        self.optimizer = tf.keras.optimizers.Adam()
+        self.Activation = "sigmoid"
+        self.MSE = tf.keras.losses.MeanSquaredError()
+        self.U = tf.Variable(self.NormalInitializers(shape=(userNum, hNum)))
+        self.V = tf.Variable(self.NormalInitializers(shape=(hNum, itemNum)))
+#+END_EXAMPLE
+
+*** 模型预测 (predict)
+**** 输入
+无
+
+**** 功能
+获取预测的用户项目矩阵
+
+**** 输出
+预测的用户项目矩阵 hatRMatrix; 类型 tf.float32; 维度 [userNum, itemNum]
+
+**** Code
+#+BEGIN_EXAMPLE
+    def predict(self):
+        hatRMatrix = tf.linalg.matmul(self.U, self.V)
+        if (self.Activation == "sigmoid"):
+            hatRMatrix = tf.keras.activations.sigmoid(hatRMatrix)
+        return hatRMatrix
+#+END_EXAMPLE
+
+
+*** 模型单次训练 (trainStep)
+**** 输入
+RMatrix 用户-项目矩阵 [userNum, itemNum]
+IMatrix 标记矩阵 [userNum, itemNum]
+
+**** 功能
+利用所有数据进行一次训练迭代
+关于自动求梯度与优化器的具体使用细节可以参考 tensorflow 官方文档。
+
+https://tensorflow.google.cn/tutorials/quickstart/advanced?hl=en
+**** 输出
+当前迭代的loss值
+
+**** Code
+#+BEGIN_EXAMPLE
+    def trainStep(self, RMatrix, IMatrix):
+        IMatrix = tf.cast(IMatrix, tf.float32)
+        RMatrix = tf.cast(RMatrix, tf.float32)
+        with tf.GradientTape() as tape:
+            hatRMatrix = self.predict()
+            loss = self.MSE(RMatrix*IMatrix, hatRMatrix*IMatrix) + self.regularizersL2(self.U) + self.regularizersL2(self.V)
+        trainParameter = [self.U, self.V]
+        gradients = tape.gradient(loss, trainParameter)
+        self.optimizer.apply_gradients(zip(gradients, trainParameter))
+        return loss
+#+END_EXAMPLE
+
+
+*** 模型训练 (fit)
+**** 输入
+RMatrix 用户-项目矩阵 [userNum, itemNum]
+IMatrix 标记矩阵 [userNum, itemNum]
+EpochNum 迭代次数
+
+**** 功能
+利用所有数据进行一次训练迭代
+
+**** Code
+#+BEGIN_EXAMPLE
+    def fit(self, RMatrix, IMatrix, EpochNum = 2):
+        tf.print ("开始训练!")
+        for i in range(EpochNum):
+            lossValue = self.trainStep(RMatrix, IMatrix)
+            tf.print ("Epoch: " + str(i) + "; loss: ", lossValue, output_stream=sys.stderr)
+        tf.print ("训练结束!")
+#+END_EXAMPLE
+
+
