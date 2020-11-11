@@ -25,7 +25,7 @@ class PMF:
         RMatrix = tf.cast(RMatrix, tf.float32)
         with tf.GradientTape() as tape:
             hatRMatrix = self.predict()
-            loss = self.MSE(RMatrix*IMatrix, hatRMatrix*IMatrix) + self.regularizersL2(self.U) + self.regularizersL2(self.V)
+            loss = self.MSE(RMatrix*IMatrix, hatRMatrix*IMatrix) + self.lamdaU * self.regularizersL2(self.U) + self.lamdaV * self.regularizersL2(self.V)
         trainParameter = [self.U, self.V]
         gradients = tape.gradient(loss, trainParameter)
         self.optimizer.apply_gradients(zip(gradients, trainParameter))
