@@ -1,10 +1,10 @@
-* 张量运算思想及 tensorflow 实现
+* tensorflow 中的张量运算思想
  GirlFriend 在复现论文的时候，我发现她不太会将通用数学公式转化为张量运算公式，导致 tensorflow 无法通过并行的方式优化其复现代码的运行速率。
 
  这里对给 GirlFriend 讲解内容进行一个总结，方便 GirlFriend 后期回顾。讲解肯定不是非常全面, 后期会持续更新不断的添加与 GirlFriend 讨论的新内容。 
  也希望能帮助初学者更好的入门机器学习。
 
- 本文中所有的例子均在 .
+ 本文中所有的代码例子均在 https://github.com/hyLiu1994/HelpGirlfriend/tree/main/张量运算及tensorflow实现.
 ** tensorflow 基础张量操作
 *** 张量之间的加减乘除
 张量之间如果进行加减乘除运算的前提条件有两个:
