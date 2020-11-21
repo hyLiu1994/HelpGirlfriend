@@ -1,0 +1,300 @@
+* 张量运算思想及 tensorflow 实现
+ GirlFriend 在复现论文的时候，我发现她不太会将通用数学公式转化为张量运算公式，导致 tensorflow 无法通过并行的方式优化其复现代码的运行速率。
+
+ 这里对给 GirlFriend 讲解内容进行一个总结，方便 GirlFriend 后期回顾。讲解肯定不是非常全面, 后期会持续更新不断的添加与 GirlFriend 讨论的新内容。 
+ 也希望能帮助初学者更好的入门机器学习。
+
+ 本文中所有的例子均在 .
+** tensorflow 基础张量操作
+*** 张量之间的加减乘除
+张量之间如果进行加减乘除运算的前提条件有两个:
+     1. 两个张量的维度数必须一致；
+     2. 两个张量对应维度其包含的元素数量要相同 或者 其中一个张量包含的元素数量为 1
+
+举例: 张量 A 维度为 $[n_{1}^{a}, n_{2}^{a}, n_{3}^{a}]$, 张量 B 维度为 $[n_{1}^{b}, n_{2}^{b}, n_{3}^{b}]$, 张量 C 维度为 $[n_{1}^{c}, n_{2}^{c}, n_{3}^{c}, n_{4}^{c}]$ 
+张量 A 与 张量 B 维度数均为 3, 与张量 C 维度数为4, 所以张量 A 与 张量 B 不能够与张量 C 进行运算。 
+张量 A 与 张量 B 能够进行加减乘除的另一个前提是要么 $n_{x}^{a} = n_{x}^{b}$, 要么 $n_{x}^{a} = 1$ 或者 $n_{x}^{b} = 1$ 。
+
+当对应维度元素数量相等的时候, 对应元素之间进行加减乘除运算； 否则元素数量为 1 的张量拷贝若干份，再进行对应元素的加减乘除。示例如下：
+#+BEGIN_EXAMPLE
+>>> A
+<tf.Variable 'Variable:0' shape=(3, 3, 2) dtype=int32, numpy=
+array([[[ 1,  2],
+        [ 2,  3],
+        [ 3,  4]],
+
+       [[ 4,  5],
+        [ 5,  6],
+        [ 6,  7]],
+
+       [[ 7,  8],
+        [ 8,  9],
+        [ 9, 10]]], dtype=int32)>
+>>> B
+<tf.Variable 'Variable:0' shape=(1, 3, 1) dtype=int32, numpy=
+array([[[1],
+        [2],
+        [3]]], dtype=int32)>
+>>> A*B
+<tf.Tensor: shape=(3, 3, 2), dtype=int32, numpy=
+array([[[ 1,  2],
+        [ 4,  6],
+        [ 9, 12]],
+
+       [[ 4,  5],
+        [10, 12],
+        [18, 21]],
+
+       [[ 7,  8],
+        [16, 18],
+        [27, 30]]], dtype=int32)>
+>>> A-B
+<tf.Tensor: shape=(3, 3, 2), dtype=int32, numpy=
+array([[[0, 1],
+        [0, 1],
+        [0, 1]],
+
+       [[3, 4],
+        [3, 4],
+        [3, 4]],
+
+       [[6, 7],
+        [6, 7],
+        [6, 7]]], dtype=int32)>
+#+END_EXAMPLE
+*** 张量之间的矩阵乘法
+矩阵乘法主要利用 tensorflow 中 tf.linalg.matmul 方法完成
+张量之间可以进行矩阵乘法运算, 前提条件同样为两个:
+    1. 两个张量最后两维需要满足矩阵乘法的维度条件即 *第一个向量的最后一维元素个数等于第二个张量导数第二维元素个数相同* 。
+    2. 张量除最后两维其他维度均需要满足张量之间加减乘除的前提条件(补位机制也与加减乘除相同)。
+
+具体例子如下:  
+#+BEGIN_EXAMPLE
+A = tf.Variable([[[1, 2], [2, 3], [3, 4]],
+                 [[4, 5], [5, 6], [6, 7]],
+                 [[7, 8], [8, 9], [9, 10]]])
+B = tf.ones(shape=(1, 2, 3), dtype=tf.int32)
+
+C = tf.linalg.matmul(A, B)
+print("A = ", A)
+print("B = ", B)
+print("C = ", C)
+# 运行结果
+A =  <tf.Variable 'Variable:0' shape=(3, 3, 2) dtype=int32, numpy=
+array([[[ 1,  2],
+        [ 2,  3],
+        [ 3,  4]],
+
+       [[ 4,  5],
+        [ 5,  6],
+        [ 6,  7]],
+
+       [[ 7,  8],
+        [ 8,  9],
+        [ 9, 10]]], dtype=int32)>
+B =  tf.Tensor(
+[[[1 1 1]
+  [1 1 1]]], shape=(1, 2, 3), dtype=int32)
+C =  tf.Tensor(
+[[[ 3  3  3]
+  [ 5  5  5]
+  [ 7  7  7]]
+
+ [[ 9  9  9]
+  [11 11 11]
+  [13 13 13]]
+
+ [[15 15 15]
+  [17 17 17]
+  [19 19 19]]], shape=(3, 3, 3), dtype=int32)
+#+END_EXAMPLE
+
+
+*** tensorflow 中张量一些常见操作
+**** tf.transpose 张量维度位置的变换
+   具体例子如下:
+   #+BEGIN_EXAMPLE
+A = tf.Variable([[[1, 2, 3],
+                 [4, 5, 6]]])
+B = tf.transpose(A, perm=[2, 1, 0])
+print("A = ", A)
+print("B = ", B)
+# 运行结果
+A =  <tf.Variable 'Variable:0' shape=(1, 2, 3) dtype=int32, numpy=
+array([[[1, 2, 3],
+        [4, 5, 6]]], dtype=int32)>
+B =  tf.Tensor(
+[[[1]
+  [4]]
+
+ [[2]
+  [5]]
+
+ [[3]
+  [6]]], shape=(3, 2, 1), dtype=int32)
+   #+END_EXAMPLE
+   其中 perm[i] 表示在变化后张量的第i维是原来张量的第perm[i]维
+**** tf.reshape 更改变量维度
+具体例子如下:
+#+BEGIN_EXAMPLE
+A = tf.Variable([[[1, 2, 3],
+                 [4, 5, 6]]])
+B = tf.reshape(A, shape=(2, 3))
+print("A = ", A)
+print("B = ", B)
+# 运行结果
+A =  <tf.Variable 'Variable:0' shape=(1, 2, 3) dtype=int32, numpy=
+array([[[1, 2, 3],
+        [4, 5, 6]]], dtype=int32)>
+B =  tf.Tensor(
+[[1 2 3]
+ [4 5 6]], shape=(2, 3), dtype=int32)
+#+END_EXAMPLE
+shape 为新生成张量的维度， 需要保证新生成张量元素个数与原始张量元素个数一致。
+**** tf.expand_dims 添加维度
+#+BEGIN_EXAMPLE
+A = tf.Variable([[[1, 2, 3],
+                 [4, 5, 6]]])
+B = tf.expand_dims(A, axis = 2)
+print("A = ", A)
+print("B = ", B)
+# 运行结果
+A =  <tf.Variable 'Variable:0' shape=(1, 2, 3) dtype=int32, numpy=
+array([[[1, 2, 3],
+        [4, 5, 6]]], dtype=int32)>
+B =  tf.Tensor(
+[[[[1 2 3]]
+
+  [[4 5 6]]]], shape=(1, 2, 1, 3), dtype=int32)
+#+END_EXAMPLE
+其中 axis 表示新添加维度的位置。
+**** tf.squeeze 删除指定位置为元素个数为 1 的维度
+#+BEGIN_EXAMPLE
+A = tf.Variable([[[1, 2, 3],
+                 [4, 5, 6]]])
+B = tf.squeeze(A, axis=0)
+print("A = ", A)
+print("B = ", B)
+# 运行结果
+A =  <tf.Variable 'Variable:0' shape=(1, 2, 3) dtype=int32, numpy=
+array([[[1, 2, 3],
+        [4, 5, 6]]], dtype=int32)>
+B =  tf.Tensor(
+[[1 2 3]
+ [4 5 6]], shape=(2, 3), dtype=int32)
+#+END_EXAMPLE
+axis 表示要删除维度的位置
+**** tf.tile 张量拷贝
+#+BEGIN_EXAMPLE
+A = tf.Variable([[[1, 2, 3],
+                 [4, 5, 6]]])
+B = tf.tile(A, multiples=[2, 1, 1])
+C = tf.tile(A, multiples=[2, 1, 2])
+print("A = ", A)
+print("B = ", B)
+print("C = ", C)
+# 运行结果
+A =  <tf.Variable 'Variable:0' shape=(1, 2, 3) dtype=int32, numpy=
+array([[[1, 2, 3],
+        [4, 5, 6]]], dtype=int32)>
+B =  tf.Tensor(
+[[[1 2 3]
+  [4 5 6]]
+
+ [[1 2 3]
+  [4 5 6]]], shape=(2, 2, 3), dtype=int32)
+C =  tf.Tensor(
+[[[1 2 3 1 2 3]
+  [4 5 6 4 5 6]]
+
+ [[1 2 3 1 2 3]
+  [4 5 6 4 5 6]]], shape=(2, 2, 6), dtype=int32)
+#+END_EXAMPLE
+其中 multiples[i] 表示原始张量中的第i维拷贝多少份
+**** tf.cast 张量类型转化
+#+BEGIN_EXAMPLE
+A = tf.Variable([[[1, 2, 3],
+                 [4, 5, 6]]])
+B = tf.cast(A, dtype=tf.float32)
+print("A = ", A)
+print("B = ", B)
+# 运行结果
+A =  <tf.Variable 'Variable:0' shape=(1, 2, 3) dtype=int32, numpy=
+array([[[1, 2, 3],
+        [4, 5, 6]]], dtype=int32)>
+B =  tf.Tensor(
+[[[1. 2. 3.]
+  [4. 5. 6.]]], shape=(1, 2, 3), dtype=float32)
+#+END_EXAMPLE
+dtype 为转换后的类型，类型必须是 tensorflow 中的基本类型, 诸如 tf.int32, tf.float32 等。 
+**** tf.reduce_sum 张量按照某一维度求和
+#+BEGIN_EXAMPLE
+A = tf.Variable([[[1, 2, 3],
+                 [4, 5, 6]]])
+B = tf.reduce_sum(A, axis=0)
+C = tf.reduce_sum(A)
+print("A = ", A)
+print("B = ", B)
+print("C = ", C)
+# 运行结果
+A =  <tf.Variable 'Variable:0' shape=(1, 2, 3) dtype=int32, numpy=
+array([[[1, 2, 3],
+        [4, 5, 6]]], dtype=int32)>
+B =  tf.Tensor(
+[[1 2 3]
+ [4 5 6]], shape=(2, 3), dtype=int32)
+C =  tf.Tensor(21, shape=(), dtype=int32)
+#+END_EXAMPLE
+其中 axis 表示求和的维度， 如果不输入 axis 则求整个张量所有元素的和。
+
+
+** 通用数学公式转张量运算公式
+这里介绍几个通用数学公式转张量运算公式，并利用 tensorflow 实现的例子。
+
+*** 例1
+\begin{equation}
+\label{eq:1}
+Y = \sigma(Wx + b)
+\end{equation}
+其中 $\sigma$ 表示 sigmoid 函数, W 为权重矩阵（维度 [60, 50]）, $x$ 为输入（维度 [50, 1]），$b$ 为偏移量 (维度 [50, 1]), $Y$ 表示返回结果 (维度 [60, 1])。
+
+这里需要说明下， 一般我们训练模型都是按照批次训练的， 所以在真实编写模型的过程中 $x$ 的维度为 [batch_size, 50, 1], 在本文我们设置 batch_size 为 32 。
+
+以下为上述公式的 tensorflow 实现
+#+BEGIN_EXAMPLE
+X = tf.Variable(tf.keras.initializers.GlorotNormal()(shape=(32, 50, 1)))
+W = tf.Variable(tf.keras.initializers.GlorotNormal()(shape=(60, 50)))
+b = tf.Variable(tf.keras.initializers.GlorotNormal()(shape=(60, 1)))
+
+Y = tf.linalg.matmul(tf.expand_dims(W, axis=0), X) + tf.expand_dims(b, axis=0)
+Y = tf.keras.activations.sigmoid(Y)
+print("X.shape = ", X.shape, "W.shape = ",
+      W.shape, "b.shape = ", b.shape, "Y.shape = ", Y.shape)
+# 运行结果
+print("X.shape = ", X.shape, "W.shape = ",
+      W.shape, "b.shape = ", b.shape, "Y.shape = ", Y.shape)
+#+END_EXAMPLE
+
+*** 例2
+\begin{equation}
+\label{eq:2}
+loss = \sum\limits_{t = 1}^T \sum\limits_{i=1}^N \sum\limits_{j=1}^M I_{ij}^t \left[ \hat{R_{ij}^t} - R_{ij}^t \right]^{2}
+\end{equation}
+其中 I 为标记矩阵 (维度 [T, N, M]), $R$ 为真实矩阵 (维度 [T, N, M]), $\hat{R}$ 为预测矩阵 (维度 [T, N, M]), 本文我们令 $T = 5, N = 6, M = 7$ 。
+
+以下为上述公式的 tensorflow 实现
+#+BEGIN_EXAMPLE
+I_mark = tf.Variable(tf.keras.initializers.GlorotNormal()(shape=(5, 6, 7)))
+hat_R = tf.Variable(tf.keras.initializers.GlorotNormal()(shape=(5, 6, 7)))
+R = tf.Variable(tf.keras.initializers.GlorotNormal()(shape=(5, 6, 7)))
+print("I.shape = ", I_mark.shape, "hat_R.shape = ", hat_R.shape, "R.shape = ", R.shape)
+loss = tf.reduce_sum(I_mark * tf.math.pow(hat_R - R, 2))
+print("loss = ", loss)
+# 运行结果
+I.shape =  (5, 6, 7) hat_R.shape =  (5, 6, 7) R.shape =  (5, 6, 7)
+loss =  tf.Tensor(0.09032831, shape=(), dtype=float32)
+#+END_EXAMPLE
+
+
+
+
